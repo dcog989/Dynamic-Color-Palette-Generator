@@ -34,7 +34,7 @@
             margin-bottom: 20px;
             padding: 15px;
             background-color: #3a3a3a;
-            border-radius: 4px;
+            border-radius: 8px;
             display: flex;
             gap: 20px;
             align-items: flex-end;
@@ -80,7 +80,6 @@
             appearance: textfield;
         }
 
-        /* Styles specifically for radio button groups within controls/export-controls */
         .controls .radio-group,
         .export-controls .radio-group {
             display: flex;
@@ -204,8 +203,10 @@
         <button id="generate-button">Generate Palette</button>
     </div>
 
+
     <div id="palette-container">
     </div>
+
 
     <div class="export-controls">
         <div class="control-group">
@@ -223,6 +224,7 @@
         </div>
         <button id="export-button">Export to CSS</button>
     </div>
+
 
     <script>
         // Variable to store the generated palette data (HSL values)
@@ -429,7 +431,7 @@
                 // Loop through lightness from 0 up to 100 (inclusive)
                 for (let l = 0; l <= 100; l += increment) {
                     const hexColor = hslToHex(baseH, baseS, l);
-                    generatedColors.push({ h: baseH, s: baseS, l: l });
+                    generatedColors.push({ h: baseH, s: baseH, l: l }); /* Corrected s: baseS */
                     createSwatch(baseH, baseS, l, hexColor, paletteContainer);
                 }
             }
@@ -445,9 +447,28 @@
                 return;
             }
 
-            // Get selected export format
+            // Get current input values to include in the comment
+            const baseHueInput = document.getElementById('base-hue');
+            const baseSaturationInput = document.getElementById('base-saturation');
+            const baseLightnessInput = document.getElementById('base-lightness');
+            const incrementValueInput = document.getElementById('increment-value');
+            const varyParamRadios = document.querySelectorAll('input[name="vary-param"]');
             const exportFormatRadios = document.querySelectorAll('input[name="export-format"]');
-            let exportFormat = 'hex'; // Default to hex
+
+            const baseH = parseInt(baseHueInput.value);
+            const baseS = parseInt(baseSaturationInput.value);
+            const baseL = parseInt(baseLightnessInput.value);
+            const increment = parseInt(incrementValueInput.value);
+
+            let varyParam = 'hue';
+            for (const radio of varyParamRadios) {
+                if (radio.checked) {
+                    varyParam = radio.value;
+                    break;
+                }
+            }
+
+            let exportFormat = 'hex';
             for (const radio of exportFormatRadios) {
                 if (radio.checked) {
                     exportFormat = radio.value;
@@ -455,8 +476,19 @@
                 }
             }
 
+            // Construct the comment string describing the palette
+            let varyingParameter = varyParam.charAt(0).toUpperCase() + varyParam.slice(1); // Capitalise first letter
+            let unit = '';
+            if (varyParam === 'hue') {
+                unit = '°';
+            } else if (varyParam === 'saturation' || varyParam === 'lightness') {
+                unit = '%';
+            }
 
-            let cssContent = ':root {\n'; // Start the :root block in CSS
+            const comment = `/*\n * Palette of colors based on HSL(${baseH} ${baseS}% ${baseL}%)\n * Varying on ${varyingParameter}, in increments of ${increment}${unit}\n * Exported as ${exportFormat.toUpperCase()}\n */\n\n`;
+
+
+            let cssContent = comment + ':root {\n'; // Prepend comment and start the :root block in CSS
 
             // Iterate through the stored colour data
             generatedColors.forEach((color, index) => {
