@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Color Palette Generator</title>
+    <style>
+        html {
+            background: #282828;
+        }
+
+        body {
+            font-family: 'Source Code Pro', monospace;
+            font-size: 18px;
+            background: #282828;
+            color: #cccccc;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .controls {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #3a3a3a;
+            border-radius: 8px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            margin-bottom: 5px;
+            font-size: 1.0em;
+            color: #ccc;
+        }
+
+        .controls input[type="number"] {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #ccc;
+            width: 60px;
+            /* Adjust width as needed */
+            -moz-appearance: textfield;
+            /* Hide arrow buttons in Firefox */
+        }
+
+        /* Hide arrow buttons in Chrome, Safari, Edge */
+        .controls input[type="number"]::-webkit-outer-spin-button,
+        .controls input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .controls .radio-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+            /* Align baseline with inputs */
+            align-items: center;
+        }
+
+        .controls .radio-group input[type="radio"] {
+            margin-right: 3px;
+            /* Space between radio and label */
+            margin-top: 0;
+            /* Adjust vertical alignment */
+        }
+
+        .controls button {
+            padding: 8px 15px;
+            background-color: #666;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s ease;
+        }
+
+        .controls button:hover {
+            background-color: #529dcf;
+        }
+
+        #palette-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            /* Gap between colour items */
+            justify-content: center;
+            /* No margin-top needed as controls have margin-bottom */
+        }
+
+        .colour-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            /* Gap between the swatch and the text */
+        }
+
+        .colour-input {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 120px;
+            height: 80px;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            border-radius: 8px;
+            border: 1px solid #555;
+            /* Border colour */
+            box-sizing: border-box;
+        }
+
+        .colour-input:focus {
+            outline: 2px solid #61afef;
+            outline-offset: 2px;
+        }
+
+        .colour-input::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .colour-input::-webkit-color-swatch {
+            border: none;
+            border-radius: 8px;
+        }
+
+        .colour-input::-moz-color-swatch {
+            border: none;
+            border-radius: 8px;
+        }
+
+        .colour-code {
+            font-size: 0.9em;
+            word-break: break-all;
+            /* Prevent overflow on narrow screens if needed */
+            text-align: center;
+            max-width: 90px;
+            /* Ensure text wraps if very long */
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Dynamic Color Palette Generator</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="base-hue">Hue (°)</label>
+            <input type="number" id="base-hue" value="0" min="0" max="359">
+        </div>
+        <div class="control-group">
+            <label for="base-saturation">Saturation (%)</label>
+            <input type="number" id="base-saturation" value="60" min="0" max="100">
+        </div>
+        <div class="control-group">
+            <label for="base-lightness">Lightness (%)</label>
+            <input type="number" id="base-lightness" value="75" min="0" max="100">
+        </div>
+        <div class="control-group">
+            <label for="increment-value">Increment by</label>
+            <input type="number" id="increment-value" value="10" min="1" max="360">
+        </div>
+        <div class="control-group">
+            <label>Vary by</label>
+            <div class="radio-group">
+                <input type="radio" id="vary-hue" name="vary-param" value="hue" checked>
+                <label for="vary-hue">Hue</label>
+
+                <input type="radio" id="vary-saturation" name="vary-param" value="saturation">
+                <label for="vary-saturation">Saturation</label>
+
+                <input type="radio" id="vary-lightness" name="vary-param" value="lightness">
+                <label for="vary-lightness">Lightness</label>
+            </div>
+        </div>
+        <button id="generate-button">Generate Palette</button>
+        <button id="export-button">Export to CSS</button>
+    </div>
+
+    <div id="palette-container">
+    </div>
+
+    <script>
+        // Variable to store the generated palette data (HSL values)
+        let generatedColors = [];
+
+        // Function to convert HSL to Hexadecimal color code
+        // H: Hue (0-360), S: Saturation (0-100), L: Lightness (0-100)
+        function hslToHex(h, s, l) {
+            // Ensure h is within [0, 360)
+            h = h % 360;
+            if (h < 0) {
+                h += 360;
+            }
+
+            // Convert s and l to be within [0, 1]
+            s /= 100;
+            l /= 100;
+
+            let c = (1 - Math.abs(2 * l - 1)) * s;
+            let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+            let m = l - c / 2;
+            let r = 0;
+            let g = 0;
+            let b = 0;
+
+            if (0 <= h && h < 60) {
+                r = c; g = x; b = 0;
+            } else if (60 <= h && h < 120) {
+                r = x; g = c; b = 0;
+            } else if (120 <= h && h < 180) {
+                r = 0; g = c; b = x;
+            } else if (180 <= h && h < 240) {
+                r = 0; g = x; b = c;
+            } else if (240 <= h && h < 300) {
+                r = x; g = 0; b = c;
+            } else if (300 <= h && h < 360) {
+                r = c; g = 0; b = x;
+            }
+
+            // Convert RGB [0, 1] to [0, 255] and round
+            r = Math.round((r + m) * 255);
+            g = Math.round((g + m) * 255);
+            b = Math.round((b + m) * 255);
+
+            // Convert RGB to Hex string
+            const toHex = (c) => {
+                const hex = c.toString(16);
+                return hex.length === 1 ? "0" + hex : hex;
+            };
+
+            return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+        }
+
+        // Helper function to create and append a single swatch item
+        function createSwatch(h, s, l, hexColor, container) {
+            // Create the container div for a single colour item (swatch + hex code)
+            const colourItem = document.createElement('div');
+            colourItem.classList.add('colour-item');
+
+            // Create the <input type="color"> element for the swatch
+            const colourInput = document.createElement('input');
+            colourInput.type = 'color';
+            colourInput.classList.add('colour-input');
+            colourInput.value = hexColor; // Set the swatch colour
+            // Add a title attribute for a helpful tooltip on hover
+            colourInput.title = `HSL(${h}°, ${s}%, ${l}%) - ${hexColor}`;
+
+            // Create the div to display the hex code text
+            const colourCode = document.createElement('div');
+            colourCode.classList.add('colour-code');
+            colourCode.textContent = hexColor; // Set the text content to the hex code
+            colourCode.style.color = hexColor; // Set the text colour to match the swatch colour
+
+            // Append the input swatch and the hex code div to their container
+            colourItem.appendChild(colourInput);
+            colourItem.appendChild(colourCode);
+
+            // Append the complete colour item to the main palette container
+            container.appendChild(colourItem);
+        }
+
+
+        // Function to generate and display the colour palette based on inputs
+        function generatePalette() {
+            // Get input elements
+            const baseHueInput = document.getElementById('base-hue');
+            const baseSaturationInput = document.getElementById('base-saturation');
+            const baseLightnessInput = document.getElementById('base-lightness');
+            const incrementValueInput = document.getElementById('increment-value');
+            const varyParamRadios = document.querySelectorAll('input[name="vary-param"]');
+            const paletteContainer = document.getElementById('palette-container');
+
+            // Get current values from inputs
+            const baseH = parseInt(baseHueInput.value);
+            const baseS = parseInt(baseSaturationInput.value);
+            const baseL = parseInt(baseLightnessInput.value);
+            const increment = parseInt(incrementValueInput.value);
+
+            let varyParam = 'hue'; // Default to varying Hue
+            for (const radio of varyParamRadios) {
+                if (radio.checked) {
+                    varyParam = radio.value;
+                    break;
+                }
+            }
+
+            // Basic validation of input values
+            if (isNaN(baseH) || baseH < 0 || baseH > 359) {
+                alert('Please enter a valid Base Hue (0-359).');
+                baseHueInput.focus();
+                return;
+            }
+            if (isNaN(baseS) || baseS < 0 || baseS > 100) {
+                alert('Please enter a valid Base Saturation (0-100).');
+                baseSaturationInput.focus();
+                return;
+            }
+            if (isNaN(baseL) || baseL < 0 || baseL > 100) {
+                alert('Please enter a valid Base Lightness (0-100).');
+                baseLightnessInput.focus();
+                return;
+            }
+            // Max increment depends on the varying parameter, but 360 is a safe upper bound for the input field
+            if (isNaN(increment) || increment < 1) {
+                alert('Please enter a valid Increment Value (1 or greater).');
+                incrementValueInput.focus();
+                return;
+            }
+            if (varyParam === 'hue' && increment > 360) {
+                alert('Hue Increment cannot exceed 360.');
+                incrementValueInput.focus();
+                return;
+            }
+            if ((varyParam === 'saturation' || varyParam === 'lightness') && increment > 100) {
+                alert('Saturation or Lightness Increment cannot exceed 100.');
+                incrementValueInput.focus();
+                return;
+            }
+
+
+            // Clear any previously generated palette items and stored data
+            paletteContainer.innerHTML = '';
+            generatedColors = []; // Clear the stored palette data
+
+            // Generate colours based on the selected varying parameter
+            if (varyParam === 'hue') {
+                // Loop through hues from 0 up to (but not including) 360
+                for (let h = 0; h < 360; h += increment) {
+                    const hexColor = hslToHex(h, baseS, baseL);
+                    generatedColors.push({ h: h, s: baseS, l: baseL });
+                    createSwatch(h, baseS, baseL, hexColor, paletteContainer);
+                }
+            } else if (varyParam === 'saturation') {
+                // Loop through saturation from 0 up to 100 (inclusive)
+                for (let s = 0; s <= 100; s += increment) {
+                    const hexColor = hslToHex(baseH, s, baseL);
+                    generatedColors.push({ h: baseH, s: s, l: baseL });
+                    createSwatch(baseH, s, baseL, hexColor, paletteContainer);
+                }
+            } else if (varyParam === 'lightness') {
+                // Loop through lightness from 0 up to 100 (inclusive)
+                for (let l = 0; l <= 100; l += increment) {
+                    const hexColor = hslToHex(baseH, baseS, l);
+                    generatedColors.push({ h: baseH, s: baseS, l: l });
+                    createSwatch(baseH, baseS, l, hexColor, paletteContainer);
+                }
+            }
+            // Note: The loops cover the specified ranges (0-360 for H, 0-100 for S/L).
+            // The last colour will be the largest multiple of 'increment' within the range.
+        }
+
+        // Function to export the generated palette as a CSS file
+        function exportCssPalette() {
+            // Check if a palette has been generated
+            if (generatedColors.length === 0) {
+                alert("Generate a palette first!");
+                return;
+            }
+
+            let cssContent = ':root {\n'; // Start the :root block in CSS
+
+            // Iterate through the stored colour data
+            generatedColors.forEach((color, index) => {
+                // Format the CSS variable name --color-NN, padded with leading zeros
+                // Use padStart(3, '0') for numbers up to 999 (handles palettes up to 360 colours)
+                const varName = `--color-${String(index + 1).padStart(3, '0')}`;
+                // Format the HSL value: hsl(h s% l%)
+                const hslValue = `hsl(${color.h} ${color.s}% ${color.l}%)`;
+                // Add the variable definition to the CSS content string with indentation
+                cssContent += `  ${varName}: ${hslValue};\n`;
+            });
+
+            cssContent += '}'; // Close the :root block
+
+            // Create a Blob containing the CSS string
+            const blob = new Blob([cssContent], { type: 'text/css' });
+
+            // Create a temporary anchor element for the download
+            const a = document.createElement('a');
+
+            // Create a URL for the blob using the browser's createObjectURL method
+            a.href = URL.createObjectURL(blob);
+
+            // Set the download attribute with the desired filename
+            a.download = 'palette.css';
+
+            // Append the link to the body (required for some browsers like Firefox to trigger click)
+            document.body.appendChild(a);
+
+            // Programmatically click the link to trigger the download
+            a.click();
+
+            // Clean up: remove the temporary link element from the DOM
+            // and revoke the object URL to free up memory.
+            // Use a short timeout to ensure the download action is initiated before cleanup.
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            }, 100); // 100ms delay for cleanup
+
+        }
+
+
+        // Generate an initial palette on page load using the default input values
+        document.addEventListener('DOMContentLoaded', () => {
+            generatePalette(); // Call the function to generate the initial palette
+
+            // Get references to the buttons after the DOM is fully loaded
+            const generateButton = document.getElementById('generate-button');
+            const exportButton = document.getElementById('export-button');
+
+            // Add event listeners to the buttons
+            generateButton.addEventListener('click', generatePalette);
+            exportButton.addEventListener('click', exportCssPalette); // Add listener for the export button
+        });
+
+    </script>
+
+</body>
+
+</html>
