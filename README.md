@@ -6,6 +6,6 @@ Generate a palette of colors by increments based on hue, saturation, or lightnes
 
 ## Usage
 
-Either [open the HTML](https://rawcdn.githack.com/dcog989/Dynamic-Color-Palette-Generator/fe255e484c5e17f3104e1ce0ecccfa4900e6ed9e/Dynamic%20Color%20Palette%20Generator.html) to use the generator.
+Either [open the HTML](https://rawcdn.githack.com/dcog989/Dynamic-Color-Palette-Generator/edc500c3349a95efdaf40822f895ca2421866747/Dynamic%20Color%20Palette%20Generator.html) to use the generator.
 
 Or [view the HTML](https://github.com/dcog989/Dynamic-Color-Palette-Generator/raw/refs/heads/main/Dynamic%20Color%20Palette%20Generator.html) then save to use it locally
