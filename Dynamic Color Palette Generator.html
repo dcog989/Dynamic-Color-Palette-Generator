@@ -170,6 +170,10 @@
 
     <h1>Dynamic Color Palette Generator</h1>
 
+    <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+        <div id="colorPickerContainer"></div>
+    </div>
+
     <div class="controls">
         <div class="control-group">
             <label for="base-hue">Hue (°)</label>
@@ -203,10 +207,8 @@
         <button id="generate-button">Generate Palette</button>
     </div>
 
-
     <div id="palette-container">
     </div>
-
 
     <div class="export-controls">
         <div class="control-group">
@@ -225,7 +227,6 @@
         <button id="export-button">Export to CSS</button>
         <button id="export-xml-button">Export to XML</button>
     </div>
-
 
     <script>
         // Variable to store the generated palette data (HSL values)
@@ -414,30 +415,50 @@
             generatedColors = []; // Clear the stored palette data
 
             // Generate colours based on the selected varying parameter
+            let palette = [];
             if (varyParam === 'hue') {
-                // Loop through hues from 0 up to (but not including) 360
-                for (let h = 0; h < 360; h += increment) {
-                    const hexColor = hslToHex(h, baseS, baseL);
-                    generatedColors.push({ h: h, s: baseS, l: baseL });
-                    createSwatch(h, baseS, baseL, hexColor, paletteContainer);
+                // Calculate increments up and down from baseH
+                let hues = new Set();
+                hues.add(baseH);
+                // Up
+                for (let h = baseH + increment; h < 360; h += increment) {
+                    hues.add(h);
                 }
+                // Down
+                for (let h = baseH - increment; h >= 0; h -= increment) {
+                    hues.add(h);
+                }
+                palette = Array.from(hues).map(h => ({ h, s: baseS, l: baseL }));
+                palette.sort((a, b) => a.h - b.h);
             } else if (varyParam === 'saturation') {
-                // Loop through saturation from 0 up to 100 (inclusive)
-                for (let s = 0; s <= 100; s += increment) {
-                    const hexColor = hslToHex(baseH, s, baseL);
-                    generatedColors.push({ h: baseH, s: s, l: baseL });
-                    createSwatch(baseH, s, baseL, hexColor, paletteContainer);
+                let sats = new Set();
+                sats.add(baseS);
+                for (let s = baseS + increment; s <= 100; s += increment) {
+                    sats.add(s);
                 }
+                for (let s = baseS - increment; s >= 0; s -= increment) {
+                    sats.add(s);
+                }
+                palette = Array.from(sats).map(s => ({ h: baseH, s, l: baseL }));
+                palette.sort((a, b) => a.s - b.s);
             } else if (varyParam === 'lightness') {
-                // Loop through lightness from 0 up to 100 (inclusive)
-                for (let l = 0; l <= 100; l += increment) {
-                    const hexColor = hslToHex(baseH, baseS, l);
-                    generatedColors.push({ h: baseH, s: baseS, l: l });
-                    createSwatch(baseH, baseS, l, hexColor, paletteContainer);
+                let lights = new Set();
+                lights.add(baseL);
+                for (let l = baseL + increment; l <= 100; l += increment) {
+                    lights.add(l);
                 }
+                for (let l = baseL - increment; l >= 0; l -= increment) {
+                    lights.add(l);
+                }
+                palette = Array.from(lights).map(l => ({ h: baseH, s: baseS, l }));
+                palette.sort((a, b) => a.l - b.l);
             }
-            // Note: The loops cover the specified ranges (0-360 for H, 0-100 for S/L).
-            // The last colour will be the largest multiple of 'increment' within the range.
+            // Store and display
+            generatedColors = palette;
+            for (const color of palette) {
+                const hexColor = hslToHex(color.h, color.s, color.l);
+                createSwatch(color.h, color.s, color.l, hexColor, paletteContainer);
+            }
         }
 
         // Function to export the generated palette as a CSS file
@@ -628,7 +649,8 @@
             }, 100);
         }
 
-        // Generate an initial palette on page load using the default input values
+        // Initialize iro.js color picker
+        let colorPicker;
         document.addEventListener('DOMContentLoaded', () => {
             generatePalette(); // Call the function to generate the initial palette
 
@@ -641,9 +663,39 @@
             generateButton.addEventListener('click', generatePalette);
             exportButton.addEventListener('click', exportCssPalette); // Add listener for the export button
             exportXmlButton.addEventListener('click', exportXmlPalette); // Add listener for the export XML button
+
+            colorPicker = new iro.ColorPicker('#colorPickerContainer', {
+                width: 220,
+                color: { h: 0, s: 60, l: 75 },
+                layout: 'default',
+            });
+            colorPicker.on('color:change', function (color) {
+                document.getElementById('base-hue').value = Math.round(color.hsl.h);
+                document.getElementById('base-saturation').value = Math.round(color.hsl.s);
+                document.getElementById('base-lightness').value = Math.round(color.hsl.l);
+            });
+
+            // Sync color picker when HSL inputs change
+            const hInput = document.getElementById('base-hue');
+            const sInput = document.getElementById('base-saturation');
+            const lInput = document.getElementById('base-lightness');
+            function updateColorPickerFromInputs() {
+                const h = parseInt(hInput.value);
+                const s = parseInt(sInput.value);
+                const l = parseInt(lInput.value);
+                if (!isNaN(h) && !isNaN(s) && !isNaN(l)) {
+                    colorPicker.color.hsl = { h, s, l };
+                }
+            }
+            hInput.addEventListener('input', updateColorPickerFromInputs);
+            sInput.addEventListener('input', updateColorPickerFromInputs);
+            lInput.addEventListener('input', updateColorPickerFromInputs);
         });
 
     </script>
+
+    <!-- Color Picker -->
+    <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
 
 </body>
 
